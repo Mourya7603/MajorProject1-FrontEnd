@@ -1,7 +1,8 @@
-// components/ProductCard.js
+// components/ProductCard.js (Simplified)
+import { useState } from "react";
 import { Card, Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { Heart, Star } from "lucide-react";
+import { Heart, Star, ImageOff } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 
@@ -9,48 +10,33 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { addToCart, removeFromCart, isInCart } = useCart();
+  const [imageError, setImageError] = useState(false);
 
   const inWishlist = isInWishlist(product._id);
   const inCart = isInCart(product._id);
 
-  // Function to render star ratings
-  const renderRating = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-
-    // Add full stars
-    for (let i = 1; i <= fullStars; i++) {
-      stars.push(
-        <Star key={`full-${i}`} size={16} fill="#FFD700" color="#FFD700" />
-      );
-    }
-
-    // Add half star if needed
-    if (hasHalfStar) {
-      stars.push(
-        <Star
-          key="half"
-          size={16}
-          fill="#FFD700"
-          color="#FFD700"
-          style={{ opacity: 0.7 }}
-        />
-      );
-    }
-
-    // Add empty stars
-    const emptyStars = 5 - stars.length;
-    for (let i = 1; i <= emptyStars; i++) {
-      stars.push(
-        <Star key={`empty-${i}`} size={16} fill="none" color="#FFD700" />
-      );
-    }
-
-    return stars;
+  // Handle image loading errors
+  const handleImageError = () => {
+    setImageError(true);
   };
 
-  const handleWishlistToggle = () => {
+  // Function to render star ratings
+  const renderRating = (rating) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={16}
+        fill={index < Math.floor(rating) ? "#FFD700" : "none"}
+        color="#FFD700"
+        style={{
+          opacity: index < rating && index >= Math.floor(rating) ? 0.7 : 1,
+        }}
+      />
+    ));
+  };
+
+  const handleWishlistToggle = (e) => {
+    e.stopPropagation();
     if (inWishlist) {
       removeFromWishlist(product._id);
     } else {
@@ -58,7 +44,8 @@ const ProductCard = ({ product }) => {
     }
   };
 
-  const handleCartToggle = () => {
+  const handleCartToggle = (e) => {
+    e.stopPropagation();
     if (inCart) {
       removeFromCart(product._id);
     } else {
@@ -66,50 +53,67 @@ const ProductCard = ({ product }) => {
     }
   };
 
+  const handleCardClick = () => {
+    navigate(`/products/${product._id}`);
+  };
+
   return (
-    <Card className="h-100 shadow-sm position-relative">
+    <Card className="h-100 shadow-sm position-relative product-card">
       {/* Heart Button on Image */}
       <div
         onClick={handleWishlistToggle}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          cursor: "pointer",
-          zIndex: 2,
-        }}
+        className="position-absolute top-0 end-0 m-2 p-1 bg-white rounded-circle"
+        style={{ cursor: "pointer", zIndex: 2 }}
       >
         <Heart
-          size={24}
+          size={20}
           color={inWishlist ? "red" : "gray"}
           fill={inWishlist ? "red" : "transparent"}
         />
       </div>
 
-      {/* Product Image */}
-      <Card.Img
-        variant="top"
-        src={product.image}
-        alt={product.name}
-        onClick={() => navigate(`/products/${product._id}`)}
-        style={{ cursor: "pointer", height: "200px", objectFit: "cover" }}
-      />
+      {/* Product Image with Fallback */}
+      <div
+        className="position-relative"
+        style={{ height: "200px", overflow: "hidden", cursor: "pointer" }}
+        onClick={handleCardClick}
+      >
+        {!imageError && product.image ? (
+          <Card.Img
+            variant="top"
+            src={product.image}
+            alt={product.name}
+            onError={handleImageError}
+            style={{
+              height: "200px",
+              objectFit: "cover",
+            }}
+          />
+        ) : (
+          <div className="d-flex flex-column align-items-center justify-content-center bg-light text-muted h-100">
+            <ImageOff size={40} className="mb-2" />
+            <span className="small">Image not available</span>
+          </div>
+        )}
+      </div>
 
       {/* Card Body */}
       <Card.Body className="d-flex flex-column">
-        <Card.Title className="h6">{product.name}</Card.Title>
+        <Card.Title
+          className="h6 text-truncate"
+          title={product.name}
+          style={{ cursor: "pointer" }}
+          onClick={handleCardClick}
+        >
+          {product.name}
+        </Card.Title>
 
         {/* Rating Display */}
         <div className="d-flex align-items-center mb-2">
           <div className="me-2">{renderRating(product.ratings || 0)}</div>
           <span className="text-muted small">
-            {product.ratings ? product.ratings.toFixed(1) : "0.0"}
+            ({product.ratings ? product.ratings.toFixed(1) : "0.0"})
           </span>
-          {product.numReviews && (
-            <span className="text-muted small ms-1">
-              ({product.numReviews})
-            </span>
-          )}
         </div>
 
         <Card.Text className="fw-bold text-primary mb-3">
@@ -121,6 +125,7 @@ const ProductCard = ({ product }) => {
           variant={inCart ? "outline-danger" : "primary"}
           className="mt-auto"
           onClick={handleCartToggle}
+          size="sm"
         >
           {inCart ? "Remove from Cart" : "Add to Cart"}
         </Button>

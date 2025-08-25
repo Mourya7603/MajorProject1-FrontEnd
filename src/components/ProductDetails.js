@@ -6,15 +6,16 @@ import {
   Card,
   Button,
   Badge,
-  Col, // ✅ Add Col import
+  Col,
 } from "react-bootstrap";
-import { Heart, HeartFill, Cart } from "react-bootstrap-icons";
+import { Heart, HeartFill, Cart, Image } from "react-bootstrap-icons";
 
 const ProductDetails = ({ product }) => {
   const navigate = useNavigate();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { addToCart, isInCart } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
 
   const toggleWishlist = () => {
     if (isInWishlist(product._id)) {
@@ -31,6 +32,11 @@ const ProductDetails = ({ product }) => {
   const handleBuyNow = () => {
     addToCart(product, quantity);
     navigate("/cart");
+  };
+
+  // Handle image loading errors
+  const handleImageError = () => {
+    setImageError(true);
   };
 
   const renderStars = (rating) => {
@@ -70,14 +76,31 @@ const ProductDetails = ({ product }) => {
     <>
       <Col lg={6} className="mb-4">
         <Card className="h-100 shadow-sm">
-          <div className="position-relative">
-            <Card.Img
-              variant="top"
-              src={product.image || "https://placehold.co/600x400"}
-              className="img-fluid"
-              style={{ maxHeight: "500px", objectFit: "contain" }}
-              alt={product.name}
-            />
+          <div className="position-relative" style={{ minHeight: "400px" }}>
+            {!imageError && product.image ? (
+              <Card.Img
+                variant="top"
+                src={product.image}
+                className="img-fluid"
+                style={{ 
+                  maxHeight: "500px", 
+                  objectFit: "contain",
+                }}
+                alt={product.name}
+                onError={handleImageError}
+              />
+            ) : (
+              <div 
+                className="d-flex flex-column align-items-center justify-content-center bg-light text-muted h-100 p-3"
+              >
+                <Image size={48} className="mb-3 text-muted" />
+                <h5 className="text-center">Image Not Available</h5>
+                <p className="text-center small">
+                  No product image found
+                </p>
+              </div>
+            )}
+            
             <Button
               variant={isProductInWishlist ? "danger" : "outline-danger"}
               className="position-absolute top-0 end-0 m-3"
@@ -85,6 +108,7 @@ const ProductDetails = ({ product }) => {
               aria-label={
                 isProductInWishlist ? "Remove from wishlist" : "Add to wishlist"
               }
+              style={{ zIndex: 2 }}
             >
               {isProductInWishlist ? (
                 <HeartFill className="fs-4" />
@@ -104,7 +128,7 @@ const ProductDetails = ({ product }) => {
             <div className="d-flex align-items-center mb-3">
               {renderStars(product.ratings || 0)}
               <small className="text-muted ms-2">
-                ({product.reviewCount || product.ratings || 0} reviews)
+                ({product.reviewCount || product.ratings || 0} rating)
               </small>
               {product.stock > 0 ? (
                 <Badge bg="success" className="ms-3">

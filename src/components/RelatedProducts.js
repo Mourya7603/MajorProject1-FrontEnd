@@ -5,6 +5,7 @@ import { Row, Col, Card, Button, Spinner } from "react-bootstrap";
 const RelatedProducts = ({ currentProduct }) => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [imageErrors, setImageErrors] = useState({}); // Track image loading errors
   const navigate = useNavigate();
   const backendUrl = "https://major-project1-backend-xi.vercel.app/api";
 
@@ -35,6 +36,11 @@ const RelatedProducts = ({ currentProduct }) => {
 
     fetchRelatedProducts();
   }, [currentProduct]);
+
+  // Handle image loading errors
+  const handleImageError = (productId) => {
+    setImageErrors(prev => ({ ...prev, [productId]: true }));
+  };
 
   const renderStars = (rating) => {
     const numericRating = Number(rating) || 0;
@@ -71,11 +77,17 @@ const RelatedProducts = ({ currentProduct }) => {
               <Card className="h-100 shadow-sm">
                 <Card.Img
                   variant="top"
-                  src={product.image || "https://placehold.co/300x200"}
+                  src={
+                    // Use fallback image if there's an error or no image
+                    imageErrors[product._id] || !product.image
+                      ? "https://placehold.co/300x200?text=No+Image"
+                      : product.image
+                  }
                   style={{ height: "200px", objectFit: "cover" }}
                   onClick={() => navigate(`/products/${product._id}`)}
                   role="button"
                   alt={product.name}
+                  onError={() => handleImageError(product._id)}
                 />
                 <Card.Body className="d-flex flex-column">
                   <Card.Title className="h6">{product.name}</Card.Title>
@@ -86,7 +98,7 @@ const RelatedProducts = ({ currentProduct }) => {
                     </small>
                   </div>
                   <Card.Text className="text-success fw-bold mb-3">
-                    ${product.price.toFixed(2)}
+                    ${product.price?.toFixed(2) || "0.00"}
                   </Card.Text>
                   <div className="mt-auto d-grid gap-2">
                     <Button

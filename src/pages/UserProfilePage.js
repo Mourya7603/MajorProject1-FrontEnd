@@ -29,29 +29,41 @@ const UserProfile = () => {
     profileImage: "https://placehold.co/100x100",
   });
 
-  // Static addresses
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      type: "Home",
-      street: "123 Main Street",
-      city: "New York",
-      state: "NY",
-      zipCode: "10001",
-      country: "USA",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      type: "Work",
-      street: "456 Office Blvd",
-      city: "New York",
-      state: "NY",
-      zipCode: "10002",
-      country: "USA",
-      isDefault: false,
-    },
-  ]);
+  // Addresses with localStorage persistence
+  const [addresses, setAddresses] = useState(() => {
+    // Load addresses from localStorage on initial render
+    try {
+      const savedAddresses = localStorage.getItem("userAddresses");
+      if (savedAddresses) {
+        return JSON.parse(savedAddresses);
+      }
+    } catch (error) {
+      console.error("Error loading addresses from localStorage:", error);
+    }
+    // Default addresses if none in localStorage
+    return [
+      {
+        id: 1,
+        type: "Home",
+        street: "123 Main Street",
+        city: "New York",
+        state: "NY",
+        zipCode: "10001",
+        country: "USA",
+        isDefault: true,
+      },
+      {
+        id: 2,
+        type: "Work",
+        street: "456 Office Blvd",
+        city: "New York",
+        state: "NY",
+        zipCode: "10002",
+        country: "USA",
+        isDefault: false,
+      },
+    ];
+  });
 
   // Real orders from backend
   const [orders, setOrders] = useState([]);
@@ -70,6 +82,11 @@ const UserProfile = () => {
     country: "USA",
     isDefault: false,
   });
+
+  // Save addresses to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("userAddresses", JSON.stringify(addresses));
+  }, [addresses]);
 
   // Fetch orders from backend
   const fetchOrders = async () => {
@@ -99,8 +116,19 @@ const UserProfile = () => {
   }, []);
 
   const handleAddAddress = () => {
-    const newId = addresses.length + 1;
-    setAddresses([...addresses, { ...newAddress, id: newId }]);
+    const newId = Date.now(); // Use timestamp for unique ID
+    const updatedAddresses = [...addresses, { ...newAddress, id: newId }];
+    
+    // If setting as default, remove default from other addresses
+    if (newAddress.isDefault) {
+      updatedAddresses.forEach(addr => {
+        if (addr.id !== newId) {
+          addr.isDefault = false;
+        }
+      });
+    }
+    
+    setAddresses(updatedAddresses);
     setShowAddAddress(false);
     setNewAddress({
       type: "Home",
@@ -114,16 +142,22 @@ const UserProfile = () => {
   };
 
   const setDefaultAddress = (id) => {
-    setAddresses(
-      addresses.map((addr) => ({
-        ...addr,
-        isDefault: addr.id === id,
-      }))
-    );
+    const updatedAddresses = addresses.map((addr) => ({
+      ...addr,
+      isDefault: addr.id === id,
+    }));
+    setAddresses(updatedAddresses);
   };
 
   const deleteAddress = (id) => {
-    setAddresses(addresses.filter((addr) => addr.id !== id));
+    const updatedAddresses = addresses.filter((addr) => addr.id !== id);
+    
+    // If deleting the default address, set a new default if available
+    if (addresses.find(addr => addr.id === id)?.isDefault && updatedAddresses.length > 0) {
+      updatedAddresses[0].isDefault = true;
+    }
+    
+    setAddresses(updatedAddresses);
   };
 
   const getStatusBadge = (status) => {
@@ -276,7 +310,11 @@ const UserProfile = () => {
                             <Button
                               variant="outline-danger"
                               size="sm"
-                              onClick={() => deleteAddress(address.id)}
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this address?")) {
+                                  deleteAddress(address.id);
+                                }
+                              }}
                             >
                               Delete
                             </Button>
@@ -346,11 +384,11 @@ const UserProfile = () => {
                     <tbody>
                       {orders.slice(0, 3).map((order) => (
                         <tr key={order._id}>
-                          <td>#{order._id.substring(0, 8)}</td>
-                          <td>{formatDate(order.createdAt)}</td>
+                          <td>#{order._id?.substring(0, 8) || order.id}</td>
+                          <td>{formatDate(order.createdAt || order.date)}</td>
                           <td>{getTotalItems(order)} items</td>
                           <td>{getStatusBadge(order.status)}</td>
-                          <td>${order.totalAmount.toFixed(2)}</td>
+                          <td>${order.totalAmount?.toFixed(2) || "0.00"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -398,6 +436,7 @@ const UserProfile = () => {
                   setNewAddress({ ...newAddress, street: e.target.value })
                 }
                 placeholder="Enter street address"
+                required
               />
             </Form.Group>
             <Row>
@@ -411,6 +450,7 @@ const UserProfile = () => {
                       setNewAddress({ ...newAddress, city: e.target.value })
                     }
                     placeholder="Enter city"
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -424,6 +464,7 @@ const UserProfile = () => {
                       setNewAddress({ ...newAddress, state: e.target.value })
                     }
                     placeholder="Enter state"
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -439,6 +480,7 @@ const UserProfile = () => {
                       setNewAddress({ ...newAddress, zipCode: e.target.value })
                     }
                     placeholder="Enter ZIP code"
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -452,6 +494,7 @@ const UserProfile = () => {
                       setNewAddress({ ...newAddress, country: e.target.value })
                     }
                     placeholder="Enter country"
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -471,7 +514,11 @@ const UserProfile = () => {
           <Button variant="secondary" onClick={() => setShowAddAddress(false)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleAddAddress}>
+          <Button 
+            variant="primary" 
+            onClick={handleAddAddress}
+            disabled={!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode || !newAddress.country}
+          >
             Save Address
           </Button>
         </Modal.Footer>
@@ -503,11 +550,11 @@ const UserProfile = () => {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order._id}>
-                    <td>#{order._id.substring(0, 8)}</td>
-                    <td>{formatDate(order.createdAt)}</td>
+                    <td>#{order._id?.substring(0, 8) || order.id}</td>
+                    <td>{formatDate(order.createdAt || order.date)}</td>
                     <td>{getTotalItems(order)} items</td>
                     <td>{getStatusBadge(order.status)}</td>
-                    <td>${order.totalAmount.toFixed(2)}</td>
+                    <td>${order.totalAmount?.toFixed(2) || "0.00"}</td>
                   </tr>
                 ))}
               </tbody>
