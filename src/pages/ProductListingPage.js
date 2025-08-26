@@ -1,63 +1,126 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
-import { Container, Row, Col, Badge, Spinner, Alert } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Badge,
+  Spinner,
+  Alert,
+  Button,
+} from "react-bootstrap";
 import { StarFill, Star } from "react-bootstrap-icons";
 import ProductCard from "../components/ProductCard";
 import FiltersSidebar from "../components/FiltersSidebar";
 
 const ProductListingPage = () => {
-  const { products, categories, loading, error, fetchProducts } = useProducts();
+  const {
+    products,
+    categories,
+    loading,
+    error,
+    fetchProducts,
+    fetchCategories,
+    refetchCategories,
+  } = useProducts();
+
   const [searchParams, setSearchParams] = useSearchParams();
-  const [sortedProducts, setSortedProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   // Get current filters from URL
-  const categoryFilter = searchParams.get("category") || "";
   const ratingFilter = searchParams.get("rating") || "";
   const sortFilter = searchParams.get("sort") || "";
   const searchFilter = searchParams.get("search") || "";
+  const categoryFilter = searchParams.get("category") || "";
 
-  // Apply filters when URL params change
+  // Apply filters when URL params change (for search and category)
   useEffect(() => {
     const params = {};
-    if (categoryFilter) params.category = categoryFilter;
-    if (ratingFilter) params.rating = parseFloat(ratingFilter);
-    if (sortFilter) params.sort = sortFilter;
     if (searchFilter) params.search = searchFilter;
+    if (categoryFilter) params.category = categoryFilter;
 
     fetchProducts(params);
-  }, [searchParams]);
+  }, [searchFilter, categoryFilter]);
 
-  // Sort products with selected category first
+  // Load categories if not already loaded
   useEffect(() => {
-    if (products.length > 0 && categoryFilter) {
-      const sorted = [...products].sort((a, b) => {
-        // Products in the selected category come first
-        const aInCategory = a.category === categoryFilter;
-        const bInCategory = b.category === categoryFilter;
-
-        if (aInCategory && !bInCategory) return -1;
-        if (!aInCategory && bInCategory) return 1;
-
-        // If both are in same category, apply price sorting
-        if (sortFilter === "lowtohigh") {
-          return a.price - b.price;
-        } else if (sortFilter === "hightolow") {
-          return b.price - a.price;
-        }
-
-        return 0;
-      });
-      setSortedProducts(sorted);
-    } else {
-      setSortedProducts(products);
+    if (categories.length === 0 && !categoriesLoading) {
+      loadCategories();
     }
-  }, [products, categoryFilter, sortFilter]);
+  }, [categories.length, categoriesLoading]);
 
-  const handleCategoryChange = (categoryName) => {
+  // Set initial category filter from URL when component mounts
+  useEffect(() => {
+    if (categoryFilter && categories.length > 0) {
+      // Split category filter by comma if multiple categories are specified
+      const categoriesFromURL = categoryFilter.split(",");
+
+      // Check if categories exist in our categories list
+      const validCategories = categoriesFromURL.filter((catName) =>
+        categories.some((cat) => cat.name === catName)
+      );
+
+      if (validCategories.length > 0) {
+        setSelectedCategories(validCategories);
+      }
+    }
+  }, [categoryFilter, categories]);
+
+  const loadCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      await refetchCategories();
+    } catch (err) {
+      console.error("Error loading categories:", err);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Apply client-side filtering for categories, rating, and sorting
+  useEffect(() => {
+    if (products.length > 0) {
+      let filtered = [...products];
+
+      // Filter by multiple categories (client-side)
+      if (selectedCategories.length > 0) {
+        filtered = filtered.filter((product) =>
+          selectedCategories.includes(product.category)
+        );
+      }
+
+      // Filter by rating (client-side)
+      if (ratingFilter) {
+        const minRating = parseFloat(ratingFilter);
+        filtered = filtered.filter(
+          (product) => (product.ratings || 0) >= minRating
+        );
+      }
+
+      // Sort products (client-side)
+      if (sortFilter === "lowtohigh") {
+        filtered.sort((a, b) => a.price - b.price);
+      } else if (sortFilter === "hightolow") {
+        filtered.sort((a, b) => b.price - a.price);
+      }
+
+      setFilteredProducts(filtered);
+    } else {
+      setFilteredProducts(products);
+    }
+  }, [products, selectedCategories, ratingFilter, sortFilter]);
+
+  const handleCategoryChange = (categoriesArray) => {
+    setSelectedCategories(categoriesArray);
+
+    // Update URL with all selected categories or remove category param if empty
     const newParams = new URLSearchParams(searchParams);
-    if (categoryName) {
-      newParams.set("category", categoryName);
+    if (categoriesArray.length > 0) {
+      // Join multiple categories with commas
+      newParams.set("category", categoriesArray.join(","));
     } else {
       newParams.delete("category");
     }
@@ -85,7 +148,14 @@ const ProductListingPage = () => {
   };
 
   const clearFilters = () => {
-    setSearchParams({});
+    setSelectedCategories([]);
+    const newParams = new URLSearchParams();
+    if (searchFilter) newParams.set("search", searchFilter);
+    setSearchParams(newParams);
+  };
+
+  const handleRefreshCategories = async () => {
+    await loadCategories();
   };
 
   const renderStars = (rating) => {
@@ -123,32 +193,56 @@ const ProductListingPage = () => {
         <Col md={3} className="mb-4">
           <FiltersSidebar
             categories={categories}
-            categoryFilter={categoryFilter}
+            selectedCategories={selectedCategories}
             ratingFilter={ratingFilter}
             sortFilter={sortFilter}
-            handleCategoryChange={handleCategoryChange}
-            handleRatingChange={handleRatingChange}
-            handleSortChange={handleSortChange}
-            clearFilters={clearFilters}
+            onCategoryChange={handleCategoryChange}
+            onRatingChange={handleRatingChange}
+            onSortChange={handleSortChange}
+            onClearFilters={clearFilters}
+            onRefreshCategories={handleRefreshCategories}
+            categoriesLoading={categoriesLoading}
           />
         </Col>
 
         {/* Products Listing */}
         <Col md={9}>
-          {/* Category Header */}
-          {categoryFilter && (
-            <div className="mb-4">
-              <h4>Category: {categoryFilter}</h4>
-              <Badge bg="primary" className="fs-6">
-                Showing{" "}
-                {
-                  sortedProducts.filter((p) => p.category === categoryFilter)
-                    .length
-                }{" "}
-                items in this category
-              </Badge>
-            </div>
-          )}
+          {/* Page Header with Filter Info */}
+          <div className="mb-4">
+            <h2>
+              {selectedCategories.length > 0
+                ? `Products in ${selectedCategories.join(", ")}`
+                : searchFilter
+                ? `Search Results for "${searchFilter}"`
+                : "All Products"}
+            </h2>
+
+            {(selectedCategories.length > 0 || ratingFilter || sortFilter) && (
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                {selectedCategories.length > 0 && (
+                  <Badge bg="primary" className="fs-6">
+                    {selectedCategories.length} Category
+                    {selectedCategories.length > 1 ? "s" : ""}
+                  </Badge>
+                )}
+                {ratingFilter && (
+                  <Badge bg="info" className="fs-6">
+                    Rating: {ratingFilter}★+
+                  </Badge>
+                )}
+                {sortFilter && (
+                  <Badge bg="secondary" className="fs-6">
+                    Sorted:{" "}
+                    {sortFilter === "lowtohigh" ? "Low to High" : "High to Low"}
+                  </Badge>
+                )}
+                <Badge bg="success" className="fs-6">
+                  {filteredProducts.length} Product
+                  {filteredProducts.length !== 1 ? "s" : ""}
+                </Badge>
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div className="text-center py-5">
@@ -158,17 +252,25 @@ const ProductListingPage = () => {
             </div>
           ) : (
             <>
-              {sortedProducts.length === 0 ? (
+              {filteredProducts.length === 0 ? (
                 <Alert variant="info">
                   No products found matching your filters.
+                  <div className="mt-2">
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={clearFilters}
+                    >
+                      Clear all filters
+                    </Button>
+                  </div>
                 </Alert>
               ) : (
                 <Row xs={1} sm={2} lg={3} className="g-4">
-                  {sortedProducts.map((product) => (
+                  {filteredProducts.map((product) => (
                     <Col key={product._id}>
                       <ProductCard
                         product={product}
-                        categoryFilter={categoryFilter}
                         renderStars={renderStars}
                       />
                     </Col>

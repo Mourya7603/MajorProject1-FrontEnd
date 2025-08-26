@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -16,13 +16,27 @@ import { useOrder } from "../context/OrderContext";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { addresses, selectedAddress, selectAddress } = useAddress();
+  const { addresses, selectedAddress, selectAddress, fetchAddresses } = useAddress();
   const { cart, getCartTotal, getCartCount, clearCart } = useCart();
   const { placeOrder } = useOrder();
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+
+  // Fetch addresses when component mounts
+  useEffect(() => {
+    const loadAddresses = async () => {
+      try {
+        await fetchAddresses();
+      } catch (error) {
+        console.error("Failed to fetch addresses:", error);
+      }
+    };
+    
+    loadAddresses();
+  }, [fetchAddresses]);
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 50 ? 0 : 5.99;
@@ -96,7 +110,13 @@ const CheckoutPage = () => {
       placeOrder(newOrder);
       setOrderDetails(newOrder);
       setOrderPlaced(true);
-      clearCart();
+      
+      // Simulate payment processing
+      setTimeout(() => {
+        setPaymentCompleted(true);
+        clearCart();
+      }, 2000);
+      
     } catch (err) {
       setError(err.message || "Failed to place order. Please try again.");
       console.error("Order placement error:", err);
@@ -109,53 +129,144 @@ const CheckoutPage = () => {
     return (
       <Container className="my-5">
         <Row className="justify-content-center">
-          <Col md={8} lg={6}>
+          <Col md={10} lg={8}>
             <Card className="text-center border-0 shadow">
               <Card.Body className="p-5">
-                <div className="text-success mb-4" style={{ fontSize: "4rem" }}>
-                  ✓
+                {/* Success Icon */}
+                <div className="mb-4">
+                  <div 
+                    className={`rounded-circle d-inline-flex align-items-center justify-content-center ${paymentCompleted ? "bg-success" : "bg-primary"}`}
+                    style={{ width: "100px", height: "100px" }}
+                  >
+                    <i 
+                      className={`fas ${paymentCompleted ? "fa-check-double" : "fa-check"} text-white`}
+                      style={{ fontSize: "3rem" }}
+                    ></i>
+                  </div>
                 </div>
-                <h2>Order Placed Successfully!</h2>
+                
+                {/* Title */}
+                <h2 className="mb-3">
+                  {paymentCompleted ? "Payment Completed Successfully!" : "Order Placed Successfully!"}
+                </h2>
+                
+                {/* Subtitle */}
                 <p className="text-muted mb-4">
-                  Thank you for your order. Your order number is #
-                  {orderDetails._id || orderDetails.id}
+                  {paymentCompleted 
+                    ? "Your payment has been processed successfully." 
+                    : "Thank you for your order. Your payment is being processed."}
                 </p>
-                <div className="text-start mb-4">
-                  <h5>Order Summary:</h5>
-                  <p>
-                    Total Amount: <strong>${orderDetails.totalAmount.toFixed(2)}</strong>
-                  </p>
-                  <p>Items: {orderDetails.items.length}</p>
-                  <p>
-                    Delivery to: {selectedAddress.street},{" "}
-                    {selectedAddress.city}
-                  </p>
-                  <p>
-                    Order Status:{" "}
-                    <Badge bg="warning">
-                      {orderDetails.status || "Success"}
-                    </Badge>
-                  </p>
-                  <p>
-                    Payment Status:{" "}
-                    <Badge bg="info">
-                      {orderDetails.paymentStatus || "Pending"}
-                    </Badge>
-                  </p>
-                </div>
-                <div className="d-grid gap-2">
+                
+                {/* Order Details */}
+                <Card className="mb-4">
+                  <Card.Header className="bg-light">
+                    <h5 className="mb-0">Order Details</h5>
+                  </Card.Header>
+                  <Card.Body>
+                    <Row className="mb-2">
+                      <Col sm={6}>
+                        <strong>Order Number:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        #{orderDetails._id?.slice(-8) || orderDetails.id?.slice(-8) || "N/A"}
+                      </Col>
+                    </Row>
+                    <Row className="mb-2">
+                      <Col sm={6}>
+                        <strong>Order Date:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        {new Date().toLocaleDateString()}
+                      </Col>
+                    </Row>
+                    <Row className="mb-2">
+                      <Col sm={6}>
+                        <strong>Total Amount:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        <strong>${orderDetails.totalAmount?.toFixed(2) || total.toFixed(2)}</strong>
+                      </Col>
+                    </Row>
+                    <Row className="mb-2">
+                      <Col sm={6}>
+                        <strong>Payment Method:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        Credit Card
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col sm={6}>
+                        <strong>Payment Status:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        <Badge bg={paymentCompleted ? "success" : "warning"}>
+                          {paymentCompleted ? "Completed" : "Processing"}
+                        </Badge>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+                
+                {/* Delivery Information */}
+                <Card className="mb-4">
+                  <Card.Header className="bg-light">
+                    <h5 className="mb-0">Delivery Information</h5>
+                  </Card.Header>
+                  <Card.Body className="text-start">
+                    <p className="mb-1">
+                      <strong>Delivery Address:</strong>
+                    </p>
+                    <p className="mb-1">
+                      {selectedAddress.fullName}
+                    </p>
+                    <p className="mb-1">
+                      {selectedAddress.street}, {selectedAddress.city}
+                    </p>
+                    <p className="mb-1">
+                      {selectedAddress.state}, {selectedAddress.zipCode}
+                    </p>
+                    <p className="mb-0">
+                      {selectedAddress.country}
+                    </p>
+                    <p className="mb-0">
+                      <strong>Phone:</strong> {selectedAddress.phone}
+                    </p>
+                    
+                    <hr />
+                    
+                    <p className="mb-1">
+                      <strong>Estimated Delivery:</strong>
+                    </p>
+                    <p className="mb-0">
+                      {new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                    </p>
+                  </Card.Body>
+                </Card>
+                
+                
+                {/* Action Buttons */}
+                <div className="d-grid gap-2 d-md-flex justify-content-md-center">
                   <Button
                     variant="primary"
                     onClick={() => navigate("/products")}
+                    className="me-md-2"
                   >
                     Continue Shopping
                   </Button>
                   <Button
-                    variant="outline-secondary"
+                    variant="outline-primary"
                     onClick={() => navigate("/profile")}
                   >
-                    View Order History
+                    View Order Details
                   </Button>
+                </div>
+                
+                {/* Support Information */}
+                <div className="mt-4 pt-3 border-top">
+                  <p className="small text-muted mb-0">
+                    Need help? Contact our support team at support@example.com or call 1-800-123-4567
+                  </p>
                 </div>
               </Card.Body>
             </Card>

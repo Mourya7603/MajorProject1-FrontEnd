@@ -1,54 +1,144 @@
 // components/FiltersSidebar.jsx
-import { Card, Form, Button } from "react-bootstrap";
+import { Card, Form, Button, Badge, Spinner, Alert } from "react-bootstrap";
+import { ArrowClockwise } from "react-bootstrap-icons";
 
 const FiltersSidebar = ({
-  categories,
-  categoryFilter,
-  ratingFilter,
-  sortFilter,
-  handleCategoryChange,
-  handleRatingChange,
-  handleSortChange,
-  clearFilters,
+  categories = [],
+  selectedCategories = [],
+  ratingFilter = "",
+  sortFilter = "",
+  onCategoryChange = () => {},
+  onRatingChange = () => {},
+  onSortChange = () => {},
+  onClearFilters = () => {},
+  onRefreshCategories = () => {},
+  categoriesLoading = false,
 }) => {
+  const handleCategoryCheckboxChange = (categoryName, isChecked) => {
+    let updatedCategories;
+
+    if (isChecked) {
+      // Add category to filter
+      updatedCategories = [...selectedCategories, categoryName];
+    } else {
+      // Remove category from filter
+      updatedCategories = selectedCategories.filter(
+        (cat) => cat !== categoryName
+      );
+    }
+
+    onCategoryChange(updatedCategories);
+  };
+
+  const handleSelectAll = () => {
+    // Select all category names
+    const allCategories = categories.map((cat) => cat.name);
+    onCategoryChange(allCategories);
+  };
+
+  const handleClearCategories = () => {
+    onCategoryChange([]);
+  };
+
+  // Extract category names if categories are objects with name property
+  const getCategoryName = (category) => {
+    return typeof category === "string" ? category : category.name;
+  };
+
   return (
     <Card className="shadow-sm">
       <Card.Header className="bg-light">
         <div className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Filters</h5>
-          <Button variant="link" size="sm" onClick={clearFilters}>
+          <Button variant="link" size="sm" onClick={onClearFilters}>
             Clear All
           </Button>
         </div>
       </Card.Header>
       <Card.Body>
-        {/* Category Filter */}
+        {/* Category Filter with Checkboxes */}
         <Form.Group className="mb-4">
-          <Form.Label className="fw-bold">Categories</Form.Label>
-          <Form.Check
-            type="radio"
-            id="category-all"
-            label="All Categories"
-            name="category"
-            checked={!categoryFilter}
-            onChange={() => handleCategoryChange("")}
-            className="mb-2"
-          />
-          {categories && categories.length > 0 ? (
-            categories.map((category) => (
-              <Form.Check
-                key={category._id}
-                type="radio"
-                id={`category-${category._id}`}
-                label={category.name}
-                name="category"
-                checked={categoryFilter === category.name}
-                onChange={() => handleCategoryChange(category.name)}
-                className="mb-2"
-              />
-            ))
+          <Form.Label className="fw-bold d-flex justify-content-between align-items-center">
+            <span>Categories</span>
+            {selectedCategories.length > 0 && (
+              <Badge bg="primary" pill>
+                {selectedCategories.length}
+              </Badge>
+            )}
+          </Form.Label>
+
+          {categoriesLoading ? (
+            <div className="text-center py-3">
+              <Spinner animation="border" size="sm" className="me-2" />
+              <span>Loading categories...</span>
+            </div>
+          ) : categories && categories.length > 0 ? (
+            <>
+              {/* Select All / Clear buttons */}
+              <div className="d-flex gap-2 mb-2">
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  disabled={selectedCategories.length === categories.length}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleClearCategories}
+                  disabled={selectedCategories.length === 0}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="outline-info"
+                  size="sm"
+                  onClick={onRefreshCategories}
+                  title="Refresh categories"
+                >
+                  <ArrowClockwise size={14} />
+                </Button>
+              </div>
+
+              <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                {categories.map((category) => {
+                  const categoryName = getCategoryName(category);
+                  return (
+                    <Form.Check
+                      key={category._id || category.id || categoryName}
+                      type="checkbox"
+                      id={`category-${
+                        category._id || category.id || categoryName
+                      }`}
+                      label={categoryName}
+                      name="category"
+                      checked={selectedCategories.includes(categoryName)}
+                      onChange={(e) =>
+                        handleCategoryCheckboxChange(
+                          categoryName,
+                          e.target.checked
+                        )
+                      }
+                      className="mb-2"
+                    />
+                  );
+                })}
+              </div>
+            </>
           ) : (
-            <div className="text-muted">No categories available</div>
+            <div className="text-center">
+              <div className="text-muted mb-2">No categories available</div>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={onRefreshCategories}
+              >
+                <ArrowClockwise className="me-1" />
+                Retry
+              </Button>
+            </div>
           )}
         </Form.Group>
 
@@ -62,12 +152,34 @@ const FiltersSidebar = ({
             max="5"
             step="0.5"
             value={ratingFilter || 0}
-            onChange={(e) => handleRatingChange(e.target.value)}
+            onChange={(e) => onRatingChange(e.target.value)}
+            className="mb-2"
           />
           <div className="d-flex justify-content-between">
             {[0, 1, 2, 3, 4, 5].map((num) => (
-              <small key={num}>{num}★</small>
+              <small
+                key={num}
+                className={
+                  parseFloat(ratingFilter || 0) >= num
+                    ? "text-primary fw-bold"
+                    : "text-muted"
+                }
+                style={{ cursor: "pointer" }}
+                onClick={() => onRatingChange(num.toString())}
+              >
+                {num}★
+              </small>
             ))}
+          </div>
+          <div className="text-center mt-1">
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => onRatingChange("")}
+              disabled={!ratingFilter}
+            >
+              Clear rating
+            </Button>
           </div>
         </Form.Group>
 
@@ -80,7 +192,7 @@ const FiltersSidebar = ({
             label="Default"
             name="sort"
             checked={!sortFilter}
-            onChange={() => handleSortChange("")}
+            onChange={() => onSortChange("")}
             className="mb-2"
           />
           <Form.Check
@@ -89,7 +201,7 @@ const FiltersSidebar = ({
             label="Price: Low to High"
             name="sort"
             checked={sortFilter === "lowtohigh"}
-            onChange={() => handleSortChange("lowtohigh")}
+            onChange={() => onSortChange("lowtohigh")}
             className="mb-2"
           />
           <Form.Check
@@ -98,7 +210,7 @@ const FiltersSidebar = ({
             label="Price: High to Low"
             name="sort"
             checked={sortFilter === "hightolow"}
-            onChange={() => handleSortChange("hightolow")}
+            onChange={() => onSortChange("hightolow")}
           />
         </Form.Group>
       </Card.Body>

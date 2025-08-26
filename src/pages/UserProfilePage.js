@@ -18,6 +18,7 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  PersonCircle,
 } from "react-bootstrap-icons";
 
 const UserProfile = () => {
@@ -26,7 +27,7 @@ const UserProfile = () => {
     name: "John Doe",
     email: "john.doe@example.com",
     phone: "+1 (555) 123-4567",
-    profileImage: "https://placehold.co/100x100",
+    profileImage: null, // Set to null to use default image
   });
 
   // Addresses with localStorage persistence
@@ -67,8 +68,10 @@ const UserProfile = () => {
 
   // Real orders from backend
   const [orders, setOrders] = useState([]);
+  const [sortedOrders, setSortedOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Modal states
   const [showAddAddress, setShowAddAddress] = useState(false);
@@ -88,10 +91,27 @@ const UserProfile = () => {
     localStorage.setItem("userAddresses", JSON.stringify(addresses));
   }, [addresses]);
 
+  // Sort orders by date (most recent first)
+  useEffect(() => {
+    const sorted = [...orders].sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.date || 0);
+      const dateB = new Date(b.createdAt || b.date || 0);
+      return dateB - dateA; // Most recent first
+    });
+    setSortedOrders(sorted);
+  }, [orders]);
+
   // Fetch orders from backend
   const fetchOrders = async () => {
     setLoading(true);
     setError("");
+    setShowSuccess(false);
+    
+    // Simulate a small delay to show the loading state
+    const loadingDelay = setTimeout(() => {
+      // This ensures the spinner is visible for at least 500ms
+    }, 500);
+    
     try {
       const response = await fetch(
         "https://major-project1-backend-xi.vercel.app/api/orders"
@@ -103,10 +123,17 @@ const UserProfile = () => {
 
       const ordersData = await response.json();
       setOrders(ordersData);
+      setShowSuccess(true);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching orders:", err);
     } finally {
+      clearTimeout(loadingDelay);
       setLoading(false);
     }
   };
@@ -225,13 +252,23 @@ const UserProfile = () => {
           {/* Profile Header */}
           <Card className="shadow-sm mb-4">
             <Card.Body className="text-center">
-              <img
-                src={userData.profileImage}
-                alt="Profile"
-                className="rounded-circle mb-3"
-                width="100"
-                height="100"
-              />
+              {userData.profileImage ? (
+                <img
+                  src={userData.profileImage}
+                  alt="Profile"
+                  className="rounded-circle mb-3"
+                  width="100"
+                  height="100"
+                />
+              ) : (
+                <div className="mb-3">
+                  <PersonCircle 
+                    className="text-secondary" 
+                    width="100" 
+                    height="100" 
+                  />
+                </div>
+              )}
               <h3>{userData.name}</h3>
               <p className="text-muted">{userData.email}</p>
               <p className="text-muted">{userData.phone}</p>
@@ -276,7 +313,7 @@ const UserProfile = () => {
           {/* Address Book */}
           <Card className="shadow-sm mb-4">
             <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Address Book</h5>
+              <h5 className="mb-0">Manage Addresses</h5>
               <Button
                 variant="primary"
                 size="sm"
@@ -332,7 +369,7 @@ const UserProfile = () => {
               ))}
               {addresses.length === 0 && (
                 <p className="text-muted text-center">
-                  No addresses saved yet.
+                  No addresses saved yet. Add your first address!
                 </p>
               )}
             </Card.Body>
@@ -355,19 +392,47 @@ const UserProfile = () => {
                   variant="outline-secondary"
                   size="sm"
                   onClick={fetchOrders}
+                  disabled={loading}
                 >
-                  Refresh
+                  {loading ? (
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                        className="me-2"
+                      />
+                      Loading...
+                    </>
+                  ) : (
+                    "Refresh"
+                  )}
                 </Button>
               </div>
             </Card.Header>
             <Card.Body>
+              {showSuccess && (
+                <Alert variant="success" className="mb-3">
+                  Orders loaded successfully!
+                </Alert>
+              )}
+
               {error && (
                 <Alert variant="danger" className="mb-3">
                   {error}
                 </Alert>
               )}
 
-              {orders.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Loading orders...</span>
+                  </Spinner>
+                  <p className="mt-2">Loading your orders...</p>
+                </div>
+              ) : sortedOrders.length === 0 ? (
                 <p className="text-muted text-center">No orders found.</p>
               ) : (
                 <>
@@ -382,7 +447,7 @@ const UserProfile = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.slice(0, 3).map((order) => (
+                      {sortedOrders.slice(0, 3).map((order) => (
                         <tr key={order._id}>
                           <td>#{order._id?.substring(0, 8) || order.id}</td>
                           <td>{formatDate(order.createdAt || order.date)}</td>
@@ -393,10 +458,10 @@ const UserProfile = () => {
                       ))}
                     </tbody>
                   </Table>
-                  {orders.length > 3 && (
+                  {sortedOrders.length > 3 && (
                     <div className="text-center mt-3">
                       <small className="text-muted">
-                        Showing 3 of {orders.length} orders
+                        Showing 3 of {sortedOrders.length} orders
                       </small>
                     </div>
                   )}
@@ -531,10 +596,17 @@ const UserProfile = () => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Order History ({orders.length} orders)</Modal.Title>
+          <Modal.Title>Order History ({sortedOrders.length} orders)</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {orders.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading orders...</span>
+              </Spinner>
+              <p className="mt-2">Loading your orders...</p>
+            </div>
+          ) : sortedOrders.length === 0 ? (
             <p className="text-muted text-center">No orders found.</p>
           ) : (
             <Table responsive>
@@ -548,7 +620,7 @@ const UserProfile = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {sortedOrders.map((order) => (
                   <tr key={order._id}>
                     <td>#{order._id?.substring(0, 8) || order.id}</td>
                     <td>{formatDate(order.createdAt || order.date)}</td>

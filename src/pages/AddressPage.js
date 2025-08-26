@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -35,10 +35,27 @@ const AddressPage = () => {
     isDefault: false,
   });
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!showModal) {
+      setFormData({
+        fullName: "",
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "India",
+        phone: "",
+        isDefault: false,
+      });
+      setEditingAddress(null);
+    }
+  }, [showModal]);
+
   const handleShowModal = (address = null) => {
     if (address) {
       setEditingAddress(address);
-      setFormData(address);
+      setFormData({ ...address });
     } else {
       setEditingAddress(null);
       setFormData({
@@ -57,7 +74,6 @@ const AddressPage = () => {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingAddress(null);
   };
 
   const handleInputChange = (e) => {
@@ -70,13 +86,15 @@ const AddressPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
+    
     if (editingAddress) {
-      updateAddress(editingAddress.id, formData);
+      // Update existing address
+      updateAddress(editingAddress._id, formData);
     } else {
+      // Add new address
       addAddress(formData);
     }
-
+    
     handleCloseModal();
   };
 
@@ -107,17 +125,23 @@ const AddressPage = () => {
             <Row>
               {addresses.map((address) => (
                 <Col md={6} lg={4} key={address._id} className="mb-4">
-                  {" "}
-                  {/* Use _id here */}
                   <Card
                     className={`h-100 ${
                       selectedAddress?._id === address._id
-                        ? "border-primary"
+                        ? "border-primary shadow-sm"
                         : ""
                     }`}
+                    style={{
+                      transition: "all 0.2s ease-in-out"
+                    }}
                   >
                     <Card.Body>
-                      {selectedAddress?.id === address.id && (
+                      {address.isDefault && (
+                        <div className="text-end mb-2">
+                          <Badge bg="primary">Default</Badge>
+                        </div>
+                      )}
+                      {selectedAddress?._id === address._id && (
                         <div className="text-end mb-2">
                           <Badge bg="success">
                             <Check className="me-1" />
@@ -136,14 +160,14 @@ const AddressPage = () => {
                       <div className="d-grid gap-2">
                         <Button
                           variant={
-                            selectedAddress?.id === address.id
+                            selectedAddress?._id === address._id
                               ? "success"
                               : "outline-primary"
                           }
                           size="sm"
                           onClick={() => selectAddress(address)}
                         >
-                          {selectedAddress?.id === address.id
+                          {selectedAddress?._id === address._id
                             ? "Selected"
                             : "Select for Delivery"}
                         </Button>
@@ -158,7 +182,7 @@ const AddressPage = () => {
                           <Button
                             variant="outline-danger"
                             size="sm"
-                            onClick={() => handleDelete(address.id)}
+                            onClick={() => handleDelete(address._id)}
                           >
                             <Trash size={14} />
                           </Button>
@@ -190,6 +214,7 @@ const AddressPage = () => {
                 value={formData.fullName}
                 onChange={handleInputChange}
                 required
+                placeholder="Enter your full name"
               />
             </Form.Group>
 
@@ -201,6 +226,7 @@ const AddressPage = () => {
                 value={formData.street}
                 onChange={handleInputChange}
                 required
+                placeholder="Enter street address"
               />
             </Form.Group>
 
@@ -214,6 +240,7 @@ const AddressPage = () => {
                     value={formData.city}
                     onChange={handleInputChange}
                     required
+                    placeholder="Enter city"
                   />
                 </Form.Group>
               </Col>
@@ -226,6 +253,7 @@ const AddressPage = () => {
                     value={formData.state}
                     onChange={handleInputChange}
                     required
+                    placeholder="Enter state"
                   />
                 </Form.Group>
               </Col>
@@ -241,6 +269,7 @@ const AddressPage = () => {
                     value={formData.zipCode}
                     onChange={handleInputChange}
                     required
+                    placeholder="Enter ZIP code"
                   />
                 </Form.Group>
               </Col>
@@ -253,6 +282,7 @@ const AddressPage = () => {
                     value={formData.country}
                     onChange={handleInputChange}
                     required
+                    placeholder="Enter country"
                   />
                 </Form.Group>
               </Col>
@@ -266,6 +296,7 @@ const AddressPage = () => {
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
+                placeholder="Enter phone number"
               />
             </Form.Group>
 
@@ -275,10 +306,11 @@ const AddressPage = () => {
               label="Set as default address"
               checked={formData.isDefault}
               onChange={handleInputChange}
+              className="mb-3"
             />
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="outline-secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button variant="primary" type="submit">
