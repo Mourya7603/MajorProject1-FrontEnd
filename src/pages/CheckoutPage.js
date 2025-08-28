@@ -70,10 +70,10 @@ const CheckoutPage = () => {
           quantity: item.quantity,
           price: item.price,
         })),
-        shippingAddress: selectedAddress._id, // Use _id instead of id
+        shippingAddress: selectedAddress._id,
         totalAmount: total,
-        status: "Pending",
-        paymentStatus: "Pending",
+        status: "Pending", // Initially set to Pending
+        paymentStatus: "Pending", // Initially set to Pending
       };
 
       console.log(
@@ -112,9 +112,50 @@ const CheckoutPage = () => {
       setOrderPlaced(true);
       
       // Simulate payment processing
-      setTimeout(() => {
-        setPaymentCompleted(true);
-        clearCart();
+      setTimeout(async () => {
+        try {
+          // Update the order status in the backend
+          const updateResponse = await fetch(
+            `https://major-project1-backend-xi.vercel.app/api/orders/${newOrder._id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                paymentStatus: "Paid",
+                status: "Shipped"
+              }),
+            }
+          );
+
+          if (updateResponse.ok) {
+            const updatedOrder = await updateResponse.json();
+            setOrderDetails(updatedOrder);
+            setPaymentCompleted(true);
+            clearCart();
+          } else {
+            console.error("Failed to update order status");
+            // Fallback: update local state only
+            setOrderDetails({
+              ...newOrder,
+              paymentStatus: "Paid",
+              status: "Shipped"
+            });
+            setPaymentCompleted(true);
+            clearCart();
+          }
+        } catch (err) {
+          console.error("Error updating order status:", err);
+          // Fallback: update local state only
+          setOrderDetails({
+            ...newOrder,
+            paymentStatus: "Paid",
+            status: "Shipped"
+          });
+          setPaymentCompleted(true);
+          clearCart();
+        }
       }, 2000);
       
     } catch (err) {
@@ -153,7 +194,7 @@ const CheckoutPage = () => {
                 {/* Subtitle */}
                 <p className="text-muted mb-4">
                   {paymentCompleted 
-                    ? "Your payment has been processed successfully." 
+                    ? "Your payment has been processed successfully and your order has been shipped." 
                     : "Thank you for your order. Your payment is being processed."}
                 </p>
                 
@@ -201,7 +242,17 @@ const CheckoutPage = () => {
                       </Col>
                       <Col sm={6} className="text-sm-end">
                         <Badge bg={paymentCompleted ? "success" : "warning"}>
-                          {paymentCompleted ? "Completed" : "Processing"}
+                          {paymentCompleted ? "Paid" : "Processing"}
+                        </Badge>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col sm={6}>
+                        <strong>Order Status:</strong>
+                      </Col>
+                      <Col sm={6} className="text-sm-end">
+                        <Badge bg={paymentCompleted ? "success" : "secondary"}>
+                          {paymentCompleted ? "Shipped" : "Pending"}
                         </Badge>
                       </Col>
                     </Row>

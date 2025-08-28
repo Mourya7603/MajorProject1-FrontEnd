@@ -17,12 +17,12 @@ export default function Home() {
     { _id: "6", name: "Beauty", image: null },
   ];
 
-  // Mock new arrivals data
-  const newArrivals = [
-    { id: 1, name: "Summer Collection", desc: "Fresh styles for the season" },
-    { id: 2, name: "Winter Specials", desc: "Cozy winter essentials" },
-    { id: 3, name: "Limited Edition", desc: "Exclusive items" },
-    { id: 4, name: "Bestsellers", desc: "Customer favorites" },
+  // Updated arrivals data based on your database
+  const arrivals = [
+    { id: 1, name: "Winter Collection", desc: "Cozy winter essentials", filter: "Winter" },
+    { id: 2, name: "Summer Collection", desc: "Fresh styles for the season", filter: "Summer" },
+    { id: 3, name: "Limited Edition", desc: "Exclusive items", filter: "Limited" },
+    { id: 4, name: "New Arrivals", desc: "Latest products", filter: "New" },
   ];
 
   useEffect(() => {
@@ -30,9 +30,6 @@ export default function Home() {
       try {
         setLoading(true);
         setError(null);
-
-        // Test if backend is reachable first
-        console.log("Testing backend connection...");
 
         const response = await fetch(
           "https://major-project1-backend-xi.vercel.app/api/categories",
@@ -44,8 +41,6 @@ export default function Home() {
           }
         );
 
-        console.log("Response status:", response.status);
-
         if (!response.ok) {
           throw new Error(
             `Server returned ${response.status}: ${response.statusText}`
@@ -53,8 +48,7 @@ export default function Home() {
         }
 
         const data = await response.json();
-        console.log("API Response:", data);
-
+        
         // Handle different response formats
         let categoriesArray = [];
 
@@ -65,7 +59,6 @@ export default function Home() {
         } else if (data.data && Array.isArray(data.data)) {
           categoriesArray = data.data;
         } else {
-          console.warn("Unexpected API format, using default categories");
           categoriesArray = defaultCategories;
         }
 
@@ -73,7 +66,6 @@ export default function Home() {
       } catch (err) {
         console.error("Failed to fetch categories:", err);
         setError(err.message);
-        // Use default categories as fallback
         setCats(defaultCategories);
       } finally {
         setLoading(false);
@@ -87,14 +79,15 @@ export default function Home() {
     navigate(`/products?category=${encodeURIComponent(categoryName)}`);
   };
 
-  const handleNewArrivalClick = (arrivalId) => {
-    navigate(`/products?new=${arrivalId}`);
+  const handleArrivalClick = (arrivalFilter) => {
+    // Navigate to products with the specific Arrivals filter
+    navigate(`/products?arrivals=${encodeURIComponent(arrivalFilter)}`);
   };
 
   return (
     <div className="container py-4">
       {/* Categories Section - Top */}
-      <div className="mb-4">
+      <div className="mb-4 px-0"> {/* Changed: Added px-0 to remove horizontal padding */}
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h4 className="mb-0">Shop Categories</h4>
           {error && (
@@ -112,9 +105,9 @@ export default function Home() {
             <p className="mt-2 text-muted">Loading categories...</p>
           </div>
         ) : (
-          <div className="row g-3">
+          <div className="row g-3 mx-0"> {/* Changed: Added mx-0 to remove horizontal margin */}
             {cats.map((c) => (
-              <div className="col-6 col-md-3 col-lg-2" key={c._id || c.id}>
+              <div className="col-6 col-md-3 col-lg-2 px-2" key={c._id || c.id}> {/* Changed: Added px-2 for consistent spacing */}
                 <button
                   className="btn p-0 w-100 border-0 bg-transparent"
                   onClick={() => handleCategoryClick(c.name)}
@@ -149,7 +142,7 @@ export default function Home() {
       </div>
 
       {/* Promo Banner - Middle */}
-      <div className="my-5">
+      <div className="my-5 px-0"> {/* Changed: Added px-0 to match width */}
         <div className="bg-primary text-white rounded-3 p-5 text-center">
           <h2 className="mb-3">🌟 Special Promotion 🌟</h2>
           <p className="lead mb-4">Get up to 50% off on your first order!</p>
@@ -162,12 +155,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* New Arrivals Section - Bottom */}
-      <div className="mt-5">
-        <h4 className="mb-3">New Arrivals</h4>
-        <div className="row g-4">
-          {newArrivals.map((item) => (
-            <div className="col-6 col-md-3" key={item.id}>
+      {/* Arrivals Section - Bottom */}
+      <div className="mt-5 px-0"> {/* Changed: Added px-0 to match width */}
+        <h4 className="mb-3">Shop by Collection</h4>
+        <div className="row g-4 mx-0"> {/* Changed: Added mx-0 to remove horizontal margin */}
+          {arrivals.map((item) => (
+            <div className="col-6 col-md-3 px-2" key={item.id}> {/* Changed: Added px-2 for consistent spacing */}
               <div className="card h-100 border-0 shadow-sm hover-lift">
                 <img
                   src={`https://placehold.co/500x500/6f42c1/ffffff?text=${encodeURIComponent(
@@ -182,7 +175,7 @@ export default function Home() {
                   <p className="card-text text-muted small">{item.desc}</p>
                   <button
                     className="btn btn-primary w-100"
-                    onClick={() => handleNewArrivalClick(item.id)}
+                    onClick={() => handleArrivalClick(item.filter)}
                   >
                     Shop Now
                   </button>
@@ -194,22 +187,22 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="row mt-5 pt-4">
-        <div className="col-md-4 text-center">
+      <div className="row mt-5 pt-4 mx-0"> {/* Changed: Added mx-0 to remove horizontal margin */}
+        <div className="col-md-4 text-center px-2"> {/* Changed: Added px-2 for consistent spacing */}
           <div className="bg-light rounded-3 p-4">
             <i className="bi bi-truck fs-1 text-primary mb-3"></i>
             <h5>Free Shipping</h5>
             <p className="text-muted">On orders over $50</p>
           </div>
         </div>
-        <div className="col-md-4 text-center">
+        <div className="col-md-4 text-center px-2"> {/* Changed: Added px-2 for consistent spacing */}
           <div className="bg-light rounded-3 p-4">
             <i className="bi bi-arrow-left-right fs-1 text-primary mb-3"></i>
             <h5>Easy Returns</h5>
             <p className="text-muted">30-day return policy</p>
           </div>
         </div>
-        <div className="col-md-4 text-center">
+        <div className="col-md-4 text-center px-2"> {/* Changed: Added px-2 for consistent spacing */}
           <div className="bg-light rounded-3 p-4">
             <i className="bi bi-shield-check fs-1 text-primary mb-3"></i>
             <h5>Secure Payment</h5>

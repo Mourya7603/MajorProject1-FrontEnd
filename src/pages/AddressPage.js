@@ -23,6 +23,8 @@ const AddressPage = () => {
     selectAddress,
   } = useAddress();
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState(null);
   const [editingAddress, setEditingAddress] = useState(null);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -76,6 +78,16 @@ const AddressPage = () => {
     setShowModal(false);
   };
 
+  const handleShowDeleteModal = (addressId) => {
+    setAddressToDelete(addressId);
+    setShowDeleteModal(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setAddressToDelete(null);
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -98,9 +110,10 @@ const AddressPage = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (addressId) => {
-    if (window.confirm("Are you sure you want to delete this address?")) {
-      deleteAddress(addressId);
+  const handleConfirmDelete = () => {
+    if (addressToDelete) {
+      deleteAddress(addressToDelete);
+      handleCloseDeleteModal();
     }
   };
 
@@ -182,7 +195,7 @@ const AddressPage = () => {
                           <Button
                             variant="outline-danger"
                             size="sm"
-                            onClick={() => handleDelete(address._id)}
+                            onClick={() => handleShowDeleteModal(address._id)}
                           >
                             <Trash size={14} />
                           </Button>
@@ -318,6 +331,24 @@ const AddressPage = () => {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={handleCloseDeleteModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this address? This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={handleCloseDeleteModal}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleConfirmDelete}>
+            Delete Address
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );

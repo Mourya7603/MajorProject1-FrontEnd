@@ -10,7 +10,8 @@ import {
   Table,
   Badge,
   Spinner,
-  Alert,
+  Toast,
+  ToastContainer,
 } from "react-bootstrap";
 import {
   Pencil,
@@ -19,6 +20,7 @@ import {
   CheckCircle,
   XCircle,
   PersonCircle,
+  Trash,
 } from "react-bootstrap-icons";
 
 const UserProfile = () => {
@@ -70,12 +72,15 @@ const UserProfile = () => {
   const [orders, setOrders] = useState([]);
   const [sortedOrders, setSortedOrders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState("success");
 
   // Modal states
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState(null);
   const [newAddress, setNewAddress] = useState({
     type: "Home",
     street: "",
@@ -101,11 +106,21 @@ const UserProfile = () => {
     setSortedOrders(sorted);
   }, [orders]);
 
+  // Show toast notification
+  const showNotification = (message, variant = "success") => {
+    setToastMessage(message);
+    setToastVariant(variant);
+    setShowToast(true);
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
   // Fetch orders from backend
   const fetchOrders = async () => {
     setLoading(true);
-    setError("");
-    setShowSuccess(false);
     
     // Simulate a small delay to show the loading state
     const loadingDelay = setTimeout(() => {
@@ -123,15 +138,10 @@ const UserProfile = () => {
 
       const ordersData = await response.json();
       setOrders(ordersData);
-      setShowSuccess(true);
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
+      showNotification("Orders loaded successfully!");
     } catch (err) {
-      setError(err.message);
       console.error("Error fetching orders:", err);
+      showNotification("Failed to load orders. Please try again.", "danger");
     } finally {
       clearTimeout(loadingDelay);
       setLoading(false);
@@ -166,6 +176,8 @@ const UserProfile = () => {
       country: "USA",
       isDefault: false,
     });
+    
+    showNotification("Address added successfully!");
   };
 
   const setDefaultAddress = (id) => {
@@ -174,17 +186,30 @@ const UserProfile = () => {
       isDefault: addr.id === id,
     }));
     setAddresses(updatedAddresses);
+    showNotification("Default address updated!");
   };
 
-  const deleteAddress = (id) => {
+  const confirmDeleteAddress = (id) => {
+    const address = addresses.find(addr => addr.id === id);
+    setAddressToDelete(address);
+    setShowDeleteConfirm(true);
+  };
+
+  const deleteAddress = () => {
+    if (!addressToDelete) return;
+    
+    const id = addressToDelete.id;
     const updatedAddresses = addresses.filter((addr) => addr.id !== id);
     
     // If deleting the default address, set a new default if available
-    if (addresses.find(addr => addr.id === id)?.isDefault && updatedAddresses.length > 0) {
+    if (addressToDelete.isDefault && updatedAddresses.length > 0) {
       updatedAddresses[0].isDefault = true;
     }
     
     setAddresses(updatedAddresses);
+    setShowDeleteConfirm(false);
+    setAddressToDelete(null);
+    showNotification("Address deleted successfully!");
   };
 
   const getStatusBadge = (status) => {
@@ -247,6 +272,22 @@ const UserProfile = () => {
 
   return (
     <Container className="my-5">
+      {/* Toast Notification */}
+      <ToastContainer position="top-end" className="p-3">
+        <Toast 
+          show={showToast} 
+          onClose={() => setShowToast(false)} 
+          bg={toastVariant}
+          delay={3000}
+          autohide
+        >
+          <Toast.Header>
+            <strong className="me-auto">Notification</strong>
+          </Toast.Header>
+          <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
+      
       <Row>
         <Col lg={8} className="mx-auto">
           {/* Profile Header */}
@@ -283,28 +324,24 @@ const UserProfile = () => {
             <Card.Body>
               <Row>
                 <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Full Name</Form.Label>
-                    <Form.Control type="text" value={userData.name} readOnly />
-                  </Form.Group>
+                  <div className="mb-3">
+                    <p className="text-muted mb-1">Full Name</p>
+                    <p className="mb-0">{userData.name}</p>
+                  </div>
                 </Col>
                 <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Email Address</Form.Label>
-                    <Form.Control
-                      type="email"
-                      value={userData.email}
-                      readOnly
-                    />
-                  </Form.Group>
+                  <div className="mb-3">
+                    <p className="text-muted mb-1">Email Address</p>
+                    <p className="mb-0">{userData.email}</p>
+                  </div>
                 </Col>
               </Row>
               <Row>
                 <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Phone Number</Form.Label>
-                    <Form.Control type="tel" value={userData.phone} readOnly />
-                  </Form.Group>
+                  <div className="mb-3">
+                    <p className="text-muted mb-1">Phone Number</p>
+                    <p className="mb-0">{userData.phone}</p>
+                  </div>
                 </Col>
               </Row>
             </Card.Body>
@@ -347,13 +384,9 @@ const UserProfile = () => {
                             <Button
                               variant="outline-danger"
                               size="sm"
-                              onClick={() => {
-                                if (window.confirm("Are you sure you want to delete this address?")) {
-                                  deleteAddress(address.id);
-                                }
-                              }}
+                              onClick={() => confirmDeleteAddress(address.id)}
                             >
-                              Delete
+                              <Trash className="me-1" /> Delete
                             </Button>
                           </>
                         )}
@@ -413,18 +446,6 @@ const UserProfile = () => {
               </div>
             </Card.Header>
             <Card.Body>
-              {showSuccess && (
-                <Alert variant="success" className="mb-3">
-                  Orders loaded successfully!
-                </Alert>
-              )}
-
-              {error && (
-                <Alert variant="danger" className="mb-3">
-                  {error}
-                </Alert>
-              )}
-
               {loading ? (
                 <div className="text-center py-4">
                   <Spinner animation="border" role="status">
@@ -585,6 +606,36 @@ const UserProfile = () => {
             disabled={!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode || !newAddress.country}
           >
             Save Address
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete Address Confirmation Modal */}
+      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete this address?</p>
+          {addressToDelete && (
+            <Card className="mt-3">
+              <Card.Body>
+                <h6>{addressToDelete.type}</h6>
+                <p className="mb-1">{addressToDelete.street}</p>
+                <p className="mb-1">
+                  {addressToDelete.city}, {addressToDelete.state} {addressToDelete.zipCode}
+                </p>
+                <p className="mb-0">{addressToDelete.country}</p>
+              </Card.Body>
+            </Card>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={deleteAddress}>
+            Delete Address
           </Button>
         </Modal.Footer>
       </Modal>

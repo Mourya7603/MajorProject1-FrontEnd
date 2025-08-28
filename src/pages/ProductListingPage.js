@@ -22,7 +22,6 @@ const ProductListingPage = () => {
     error,
     fetchProducts,
     fetchCategories,
-    refetchCategories,
   } = useProducts();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,15 +34,17 @@ const ProductListingPage = () => {
   const sortFilter = searchParams.get("sort") || "";
   const searchFilter = searchParams.get("search") || "";
   const categoryFilter = searchParams.get("category") || "";
+  const arrivalsFilter = searchParams.get("arrivals") || ""; // NEW: Get arrivals filter
 
-  // Apply filters when URL params change (for search and category)
+  // Apply filters when URL params change (for search, category, and arrivals)
   useEffect(() => {
     const params = {};
     if (searchFilter) params.search = searchFilter;
     if (categoryFilter) params.category = categoryFilter;
+    if (arrivalsFilter) params.arrivals = arrivalsFilter; // NEW: Add arrivals to params
 
     fetchProducts(params);
-  }, [searchFilter, categoryFilter]);
+  }, [searchFilter, categoryFilter, arrivalsFilter]); // NEW: Add arrivalsFilter dependency
 
   // Load categories if not already loaded
   useEffect(() => {
@@ -72,7 +73,7 @@ const ProductListingPage = () => {
   const loadCategories = async () => {
     setCategoriesLoading(true);
     try {
-      await refetchCategories();
+      await fetchCategories(); // CHANGED: Use fetchCategories instead of refetchCategories
     } catch (err) {
       console.error("Error loading categories:", err);
     } finally {
@@ -151,6 +152,7 @@ const ProductListingPage = () => {
     setSelectedCategories([]);
     const newParams = new URLSearchParams();
     if (searchFilter) newParams.set("search", searchFilter);
+    if (arrivalsFilter) newParams.set("arrivals", arrivalsFilter); // NEW: Keep arrivals filter if present
     setSearchParams(newParams);
   };
 
@@ -210,15 +212,22 @@ const ProductListingPage = () => {
           {/* Page Header with Filter Info */}
           <div className="mb-4">
             <h2>
-              {selectedCategories.length > 0
+              {arrivalsFilter // NEW: Show arrivals filter first
+                ? `${arrivalsFilter} Collection`
+                : selectedCategories.length > 0
                 ? `Products in ${selectedCategories.join(", ")}`
                 : searchFilter
                 ? `Search Results for "${searchFilter}"`
                 : "All Products"}
             </h2>
 
-            {(selectedCategories.length > 0 || ratingFilter || sortFilter) && (
+            {(selectedCategories.length > 0 || ratingFilter || sortFilter || arrivalsFilter) && ( // NEW: Added arrivalsFilter
               <div className="d-flex flex-wrap gap-2 mt-2">
+                {arrivalsFilter && ( // NEW: Show arrivals badge
+                  <Badge bg="warning" className="fs-6">
+                    Collection: {arrivalsFilter}
+                  </Badge>
+                )}
                 {selectedCategories.length > 0 && (
                   <Badge bg="primary" className="fs-6">
                     {selectedCategories.length} Category

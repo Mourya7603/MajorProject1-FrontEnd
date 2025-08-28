@@ -1,6 +1,5 @@
 // components/FiltersSidebar.jsx
 import { Card, Form, Button, Badge, Spinner, Alert } from "react-bootstrap";
-import { ArrowClockwise } from "react-bootstrap-icons";
 
 const FiltersSidebar = ({
   categories = [],
@@ -11,7 +10,6 @@ const FiltersSidebar = ({
   onRatingChange = () => {},
   onSortChange = () => {},
   onClearFilters = () => {},
-  onRefreshCategories = () => {},
   categoriesLoading = false,
 }) => {
   const handleCategoryCheckboxChange = (categoryName, isChecked) => {
@@ -92,14 +90,6 @@ const FiltersSidebar = ({
                 >
                   Clear
                 </Button>
-                <Button
-                  variant="outline-info"
-                  size="sm"
-                  onClick={onRefreshCategories}
-                  title="Refresh categories"
-                >
-                  <ArrowClockwise size={14} />
-                </Button>
               </div>
 
               <div style={{ maxHeight: "300px", overflowY: "auto" }}>
@@ -128,17 +118,9 @@ const FiltersSidebar = ({
               </div>
             </>
           ) : (
-            <div className="text-center">
-              <div className="text-muted mb-2">No categories available</div>
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={onRefreshCategories}
-              >
-                <ArrowClockwise className="me-1" />
-                Retry
-              </Button>
-            </div>
+            <Alert variant="info" className="text-center py-2">
+              No categories available
+            </Alert>
           )}
         </Form.Group>
 
