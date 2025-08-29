@@ -417,7 +417,7 @@ const CheckoutPage = () => {
 
       <Row>
         {/* Order Summary */}
-        <Col lg={5}>
+        <Col xs={12} lg={5} className="order-1 order-lg-2 mb-4 mb-lg-0">
           <Card className="sticky-top" style={{ top: "20px" }}>
             <Card.Header>
               <h5 className="mb-0">Order Summary</h5>
