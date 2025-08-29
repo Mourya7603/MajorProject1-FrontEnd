@@ -47,6 +47,24 @@ const CheckoutPage = () => {
     return "68a2d027f17a6dbb2ee3e0ab"; // Your demo user ID
   };
 
+  // Save order to localStorage
+  const saveOrderToLocalStorage = (order) => {
+    try {
+      // Get existing orders from localStorage
+      const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
+      
+      // Add the new order
+      const updatedOrders = [...existingOrders, order];
+      
+      // Save back to localStorage
+      localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
+      
+      console.log("Order saved to localStorage:", order);
+    } catch (error) {
+      console.error("Error saving order to localStorage:", error);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       alert("Please select a delivery address");
@@ -111,6 +129,19 @@ const CheckoutPage = () => {
       setOrderDetails(newOrder);
       setOrderPlaced(true);
       
+      // Save order to localStorage immediately
+      saveOrderToLocalStorage({
+        ...newOrder,
+        // Add some additional fields for better display in profile
+        date: new Date().toISOString(),
+        // Ensure we have all necessary fields
+        _id: newOrder._id || `local-${Date.now()}`,
+        id: newOrder.id || `local-${Date.now()}`,
+        createdAt: newOrder.createdAt || new Date().toISOString(),
+        status: newOrder.status || "Pending",
+        paymentStatus: newOrder.paymentStatus || "Pending"
+      });
+      
       // Simulate payment processing
       setTimeout(async () => {
         try {
@@ -129,31 +160,66 @@ const CheckoutPage = () => {
             }
           );
 
+          let updatedOrder;
           if (updateResponse.ok) {
-            const updatedOrder = await updateResponse.json();
-            setOrderDetails(updatedOrder);
-            setPaymentCompleted(true);
-            clearCart();
+            updatedOrder = await updateResponse.json();
           } else {
-            console.error("Failed to update order status");
-            // Fallback: update local state only
-            setOrderDetails({
+            console.error("Failed to update order status in backend");
+            // Fallback: create updated order locally
+            updatedOrder = {
               ...newOrder,
               paymentStatus: "Paid",
               status: "Shipped"
-            });
-            setPaymentCompleted(true);
-            clearCart();
+            };
           }
+          
+          setOrderDetails(updatedOrder);
+          setPaymentCompleted(true);
+          
+          // Update the order in localStorage with the final status
+          try {
+            const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
+            const updatedOrders = existingOrders.map(order => 
+              order._id === newOrder._id ? {
+                ...order,
+                paymentStatus: "Paid",
+                status: "Shipped",
+                updatedAt: new Date().toISOString()
+              } : order
+            );
+            localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
+          } catch (error) {
+            console.error("Error updating order in localStorage:", error);
+          }
+          
+          clearCart();
         } catch (err) {
           console.error("Error updating order status:", err);
           // Fallback: update local state only
-          setOrderDetails({
+          const updatedOrder = {
             ...newOrder,
             paymentStatus: "Paid",
             status: "Shipped"
-          });
+          };
+          setOrderDetails(updatedOrder);
           setPaymentCompleted(true);
+          
+          // Update localStorage with fallback data
+          try {
+            const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
+            const updatedOrders = existingOrders.map(order => 
+              order._id === newOrder._id ? {
+                ...order,
+                paymentStatus: "Paid",
+                status: "Shipped",
+                updatedAt: new Date().toISOString()
+              } : order
+            );
+            localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
+          } catch (error) {
+            console.error("Error updating order in localStorage:", error);
+          }
+          
           clearCart();
         }
       }, 2000);

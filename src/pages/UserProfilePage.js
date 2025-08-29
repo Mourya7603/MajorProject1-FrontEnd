@@ -22,53 +22,28 @@ import {
   PersonCircle,
   Trash,
 } from "react-bootstrap-icons";
+import { useAddress } from "../context/AddressContext";
 
 const UserProfile = () => {
+  // Use the shared address context
+  const {
+    addresses,
+    selectedAddress,
+    addAddress,
+    updateAddress,
+    deleteAddress,
+    selectAddress,
+  } = useAddress();
+
   // Static user data
   const [userData] = useState({
     name: "John Doe",
     email: "john.doe@example.com",
     phone: "+1 (555) 123-4567",
-    profileImage: null, // Set to null to use default image
+    profileImage: null,
   });
 
-  // Addresses with localStorage persistence
-  const [addresses, setAddresses] = useState(() => {
-    // Load addresses from localStorage on initial render
-    try {
-      const savedAddresses = localStorage.getItem("userAddresses");
-      if (savedAddresses) {
-        return JSON.parse(savedAddresses);
-      }
-    } catch (error) {
-      console.error("Error loading addresses from localStorage:", error);
-    }
-    // Default addresses if none in localStorage
-    return [
-      {
-        id: 1,
-        type: "Home",
-        street: "123 Main Street",
-        city: "New York",
-        state: "NY",
-        zipCode: "10001",
-        country: "USA",
-        isDefault: true,
-      },
-      {
-        id: 2,
-        type: "Work",
-        street: "456 Office Blvd",
-        city: "New York",
-        state: "NY",
-        zipCode: "10002",
-        country: "USA",
-        isDefault: false,
-      },
-    ];
-  });
-
-  // Real orders from backend
+  // Orders from localStorage
   const [orders, setOrders] = useState([]);
   const [sortedOrders, setSortedOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -82,19 +57,34 @@ const UserProfile = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
   const [newAddress, setNewAddress] = useState({
+    fullName: userData.name,
     type: "Home",
     street: "",
     city: "",
     state: "",
     zipCode: "",
     country: "USA",
+    phone: userData.phone,
     isDefault: false,
   });
 
-  // Save addresses to localStorage whenever they change
+  // Load orders from localStorage on component mount
   useEffect(() => {
-    localStorage.setItem("userAddresses", JSON.stringify(addresses));
-  }, [addresses]);
+    const loadOrders = () => {
+      try {
+        const savedOrders = localStorage.getItem("userOrders");
+        if (savedOrders) {
+          const parsedOrders = JSON.parse(savedOrders);
+          setOrders(parsedOrders);
+        }
+      } catch (error) {
+        console.error("Error loading orders from localStorage:", error);
+        showNotification("Failed to load orders from storage.", "danger");
+      }
+    };
+    
+    loadOrders();
+  }, []);
 
   // Sort orders by date (most recent first)
   useEffect(() => {
@@ -118,62 +108,19 @@ const UserProfile = () => {
     }, 3000);
   };
 
-  // Fetch orders from backend
-  const fetchOrders = async () => {
-    setLoading(true);
-    
-    // Simulate a small delay to show the loading state
-    const loadingDelay = setTimeout(() => {
-      // This ensures the spinner is visible for at least 500ms
-    }, 500);
-    
-    try {
-      const response = await fetch(
-        "https://major-project1-backend-xi.vercel.app/api/orders"
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch orders: ${response.status}`);
-      }
-
-      const ordersData = await response.json();
-      setOrders(ordersData);
-      showNotification("Orders loaded successfully!");
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-      showNotification("Failed to load orders. Please try again.", "danger");
-    } finally {
-      clearTimeout(loadingDelay);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
   const handleAddAddress = () => {
-    const newId = Date.now(); // Use timestamp for unique ID
-    const updatedAddresses = [...addresses, { ...newAddress, id: newId }];
-    
-    // If setting as default, remove default from other addresses
-    if (newAddress.isDefault) {
-      updatedAddresses.forEach(addr => {
-        if (addr.id !== newId) {
-          addr.isDefault = false;
-        }
-      });
-    }
-    
-    setAddresses(updatedAddresses);
+    // Add address using the shared context
+    addAddress(newAddress);
     setShowAddAddress(false);
     setNewAddress({
+      fullName: userData.name,
       type: "Home",
       street: "",
       city: "",
       state: "",
       zipCode: "",
       country: "USA",
+      phone: userData.phone,
       isDefault: false,
     });
     
@@ -181,32 +128,25 @@ const UserProfile = () => {
   };
 
   const setDefaultAddress = (id) => {
-    const updatedAddresses = addresses.map((addr) => ({
-      ...addr,
-      isDefault: addr.id === id,
-    }));
-    setAddresses(updatedAddresses);
-    showNotification("Default address updated!");
+    const address = addresses.find(addr => addr._id === id || addr.id === id);
+    if (address) {
+      // Update address using the shared context
+      updateAddress(address._id || address.id, { ...address, isDefault: true });
+      showNotification("Default address updated!");
+    }
   };
 
   const confirmDeleteAddress = (id) => {
-    const address = addresses.find(addr => addr.id === id);
+    const address = addresses.find(addr => addr._id === id || addr.id === id);
     setAddressToDelete(address);
     setShowDeleteConfirm(true);
   };
 
-  const deleteAddress = () => {
+  const handleDeleteAddress = () => {
     if (!addressToDelete) return;
     
-    const id = addressToDelete.id;
-    const updatedAddresses = addresses.filter((addr) => addr.id !== id);
-    
-    // If deleting the default address, set a new default if available
-    if (addressToDelete.isDefault && updatedAddresses.length > 0) {
-      updatedAddresses[0].isDefault = true;
-    }
-    
-    setAddresses(updatedAddresses);
+    // Delete address using the shared context
+    deleteAddress(addressToDelete._id || addressToDelete.id);
     setShowDeleteConfirm(false);
     setAddressToDelete(null);
     showNotification("Address deleted successfully!");
@@ -361,11 +301,11 @@ const UserProfile = () => {
             </Card.Header>
             <Card.Body>
               {addresses.map((address) => (
-                <Card key={address.id} className="mb-3">
+                <Card key={address._id || address.id} className="mb-3">
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <h6 className="mb-0">
-                        {address.type}{" "}
+                        {address.type || "Address"}{" "}
                         {address.isDefault && (
                           <Badge bg="primary">Default</Badge>
                         )}
@@ -377,14 +317,14 @@ const UserProfile = () => {
                               variant="outline-primary"
                               size="sm"
                               className="me-2"
-                              onClick={() => setDefaultAddress(address.id)}
+                              onClick={() => setDefaultAddress(address._id || address.id)}
                             >
                               Set Default
                             </Button>
                             <Button
                               variant="outline-danger"
                               size="sm"
-                              onClick={() => confirmDeleteAddress(address.id)}
+                              onClick={() => confirmDeleteAddress(address._id || address.id)}
                             >
                               <Trash className="me-1" /> Delete
                             </Button>
@@ -392,11 +332,13 @@ const UserProfile = () => {
                         )}
                       </div>
                     </div>
+                    {address.fullName && <p className="mb-1">{address.fullName}</p>}
                     <p className="mb-1">{address.street}</p>
                     <p className="mb-1">
                       {address.city}, {address.state} {address.zipCode}
                     </p>
-                    <p className="mb-0">{address.country}</p>
+                    <p className="mb-1">{address.country}</p>
+                    {address.phone && <p className="mb-0">Phone: {address.phone}</p>}
                   </Card.Body>
                 </Card>
               ))}
@@ -421,39 +363,10 @@ const UserProfile = () => {
                 >
                   View All Orders
                 </Button>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={fetchOrders}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                        className="me-2"
-                      />
-                      Loading...
-                    </>
-                  ) : (
-                    "Refresh"
-                  )}
-                </Button>
               </div>
             </Card.Header>
             <Card.Body>
-              {loading ? (
-                <div className="text-center py-4">
-                  <Spinner animation="border" role="status">
-                    <span className="visually-hidden">Loading orders...</span>
-                  </Spinner>
-                  <p className="mt-2">Loading your orders...</p>
-                </div>
-              ) : sortedOrders.length === 0 ? (
+              {sortedOrders.length === 0 ? (
                 <p className="text-muted text-center">No orders found.</p>
               ) : (
                 <>
@@ -469,8 +382,8 @@ const UserProfile = () => {
                     </thead>
                     <tbody>
                       {sortedOrders.slice(0, 3).map((order) => (
-                        <tr key={order._id}>
-                          <td>#{order._id?.substring(0, 8) || order.id}</td>
+                        <tr key={order._id || order.id}>
+                          <td>#{(order._id || order.id)?.substring(0, 8)}</td>
                           <td>{formatDate(order.createdAt || order.date)}</td>
                           <td>{getTotalItems(order)} items</td>
                           <td>{getStatusBadge(order.status)}</td>
@@ -500,6 +413,18 @@ const UserProfile = () => {
         </Modal.Header>
         <Modal.Body>
           <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Full Name</Form.Label>
+              <Form.Control
+                type="text"
+                value={newAddress.fullName}
+                onChange={(e) =>
+                  setNewAddress({ ...newAddress, fullName: e.target.value })
+                }
+                placeholder="Enter full name"
+                required
+              />
+            </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Address Type</Form.Label>
               <Form.Select
@@ -585,6 +510,18 @@ const UserProfile = () => {
                 </Form.Group>
               </Col>
             </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Phone Number</Form.Label>
+              <Form.Control
+                type="tel"
+                value={newAddress.phone}
+                onChange={(e) =>
+                  setNewAddress({ ...newAddress, phone: e.target.value })
+                }
+                placeholder="Enter phone number"
+                required
+              />
+            </Form.Group>
             <Form.Check
               type="checkbox"
               label="Set as default address"
@@ -620,12 +557,14 @@ const UserProfile = () => {
           {addressToDelete && (
             <Card className="mt-3">
               <Card.Body>
-                <h6>{addressToDelete.type}</h6>
+                <h6>{addressToDelete.type || "Address"}</h6>
+                {addressToDelete.fullName && <p className="mb-1">{addressToDelete.fullName}</p>}
                 <p className="mb-1">{addressToDelete.street}</p>
                 <p className="mb-1">
                   {addressToDelete.city}, {addressToDelete.state} {addressToDelete.zipCode}
                 </p>
-                <p className="mb-0">{addressToDelete.country}</p>
+                <p className="mb-1">{addressToDelete.country}</p>
+                {addressToDelete.phone && <p className="mb-0">Phone: {addressToDelete.phone}</p>}
               </Card.Body>
             </Card>
           )}
@@ -634,7 +573,7 @@ const UserProfile = () => {
           <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={deleteAddress}>
+          <Button variant="danger" onClick={handleDeleteAddress}>
             Delete Address
           </Button>
         </Modal.Footer>
@@ -650,14 +589,7 @@ const UserProfile = () => {
           <Modal.Title>Order History ({sortedOrders.length} orders)</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {loading ? (
-            <div className="text-center py-4">
-              <Spinner animation="border" role="status">
-                <span className="visually-hidden">Loading orders...</span>
-              </Spinner>
-              <p className="mt-2">Loading your orders...</p>
-            </div>
-          ) : sortedOrders.length === 0 ? (
+          {sortedOrders.length === 0 ? (
             <p className="text-muted text-center">No orders found.</p>
           ) : (
             <Table responsive>
@@ -672,8 +604,8 @@ const UserProfile = () => {
               </thead>
               <tbody>
                 {sortedOrders.map((order) => (
-                  <tr key={order._id}>
-                    <td>#{order._id?.substring(0, 8) || order.id}</td>
+                  <tr key={order._id || order.id}>
+                    <td>#{(order._id || order.id)?.substring(0, 8)}</td>
                     <td>{formatDate(order.createdAt || order.date)}</td>
                     <td>{getTotalItems(order)} items</td>
                     <td>{getStatusBadge(order.status)}</td>
