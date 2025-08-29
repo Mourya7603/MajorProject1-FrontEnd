@@ -100,8 +100,8 @@ const AddressPage = () => {
     e.preventDefault();
     
     if (editingAddress) {
-      // Update existing address
-      updateAddress(editingAddress._id, formData);
+      // Update existing address - use id instead of _id
+      updateAddress(editingAddress.id, formData);
     } else {
       // Add new address
       addAddress(formData);
@@ -137,10 +137,10 @@ const AddressPage = () => {
           ) : (
             <Row>
               {addresses.map((address) => (
-                <Col md={6} lg={4} key={address._id} className="mb-4">
+                <Col md={6} lg={4} key={address.id} className="mb-4">
                   <Card
                     className={`h-100 ${
-                      selectedAddress?._id === address._id
+                      selectedAddress?.id === address.id
                         ? "border-primary shadow-sm"
                         : ""
                     }`}
@@ -154,7 +154,7 @@ const AddressPage = () => {
                           <Badge bg="primary">Default</Badge>
                         </div>
                       )}
-                      {selectedAddress?._id === address._id && (
+                      {selectedAddress?.id === address.id && (
                         <div className="text-end mb-2">
                           <Badge bg="success">
                             <Check className="me-1" />
@@ -173,14 +173,14 @@ const AddressPage = () => {
                       <div className="d-grid gap-2">
                         <Button
                           variant={
-                            selectedAddress?._id === address._id
+                            selectedAddress?.id === address.id
                               ? "success"
                               : "outline-primary"
                           }
                           size="sm"
                           onClick={() => selectAddress(address)}
                         >
-                          {selectedAddress?._id === address._id
+                          {selectedAddress?.id === address.id
                             ? "Selected"
                             : "Select for Delivery"}
                         </Button>
@@ -195,7 +195,7 @@ const AddressPage = () => {
                           <Button
                             variant="outline-danger"
                             size="sm"
-                            onClick={() => handleShowDeleteModal(address._id)}
+                            onClick={() => handleShowDeleteModal(address.id)}
                           >
                             <Trash size={14} />
                           </Button>
