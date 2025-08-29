@@ -20,6 +20,8 @@ export const AddressProvider = ({ children }) => {
   });
   
   const [selectedAddress, setSelectedAddress] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Set selected address based on loaded addresses
   useEffect(() => {
@@ -37,6 +39,21 @@ export const AddressProvider = ({ children }) => {
       console.error('Error saving addresses to localStorage:', error);
     }
   }, [addresses]);
+
+  // Add this function to simulate fetching addresses
+  const fetchAddresses = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // In a real app, you would fetch from an API
+      // For now, we'll just use the addresses from localStorage
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch addresses');
+      setLoading(false);
+      console.error('Error fetching addresses:', err);
+    }
+  };
 
   const addAddress = (newAddress) => {
     // Generate a unique ID for the new address
@@ -128,6 +145,9 @@ export const AddressProvider = ({ children }) => {
     updateAddress,
     deleteAddress,
     selectAddress,
+    fetchAddresses, 
+    loading,
+    error
   };
 
   return (

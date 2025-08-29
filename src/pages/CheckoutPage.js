@@ -47,32 +47,49 @@ const CheckoutPage = () => {
     return "68a2d027f17a6dbb2ee3e0ab"; // Your demo user ID
   };
 
-  // Save order to localStorage
-  const saveOrderToLocalStorage = (order) => {
+  // Function to validate if a string is a valid MongoDB ObjectId
+  const isValidObjectId = (id) => {
+    return /^[0-9a-fA-F]{24}$/.test(id);
+  };
+
+  // Function to convert a string to ObjectId format
+  const toObjectId = (id) => {
+    if (isValidObjectId(id)) {
+      return id;
+    }
+    // If it's not a valid ObjectId, we'll create a mock one for demo purposes
+    // In a real app, you'd want to handle this differently
+    return "000000000000000000000000".replace(/0/g, () => 
+      Math.floor(Math.random() * 16).toString(16)
+    );
+  };
+
+  // Function to store order in localStorage
+  const storeOrderInLocalStorage = (order) => {
     try {
-      // Get existing orders from localStorage
-      const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
+      // Get existing orders from localStorage or initialize empty array
+      const existingOrders = JSON.parse(localStorage.getItem('userOrders') || '[]');
       
-      // Add the new order
+      // Add the new order to the array
       const updatedOrders = [...existingOrders, order];
       
-      // Save back to localStorage
-      localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
+      // Store the updated array back in localStorage
+      localStorage.setItem('userOrders', JSON.stringify(updatedOrders));
       
-      console.log("Order saved to localStorage:", order);
+      console.log("Order stored in localStorage successfully");
     } catch (error) {
-      console.error("Error saving order to localStorage:", error);
+      console.error("Error storing order in localStorage:", error);
     }
   };
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
-      alert("Please select a delivery address");
+      setError("Please select a delivery address");
       return;
     }
 
     if (cart.length === 0) {
-      alert("Your cart is empty");
+      setError("Your cart is empty");
       return;
     }
 
@@ -82,13 +99,13 @@ const CheckoutPage = () => {
     try {
       // Format order data to match backend schema EXACTLY
       const orderData = {
-        user: getUserId(),
+        user: toObjectId(getUserId()), // Convert user ID to ObjectId format
         items: cart.map((item) => ({
-          product: item._id,
+          product: toObjectId(item._id || item.id), // Convert product ID to ObjectId format
           quantity: item.quantity,
           price: item.price,
         })),
-        shippingAddress: selectedAddress._id,
+        shippingAddress: toObjectId(selectedAddress._id || selectedAddress.id), // Convert address ID to ObjectId format
         totalAmount: total,
         status: "Pending", // Initially set to Pending
         paymentStatus: "Pending", // Initially set to Pending
@@ -124,23 +141,13 @@ const CheckoutPage = () => {
 
       console.log("Order created successfully:", newOrder);
 
+      // Store order in localStorage
+      storeOrderInLocalStorage(newOrder);
+
       // Update local context
       placeOrder(newOrder);
       setOrderDetails(newOrder);
       setOrderPlaced(true);
-      
-      // Save order to localStorage immediately
-      saveOrderToLocalStorage({
-        ...newOrder,
-        // Add some additional fields for better display in profile
-        date: new Date().toISOString(),
-        // Ensure we have all necessary fields
-        _id: newOrder._id || `local-${Date.now()}`,
-        id: newOrder.id || `local-${Date.now()}`,
-        createdAt: newOrder.createdAt || new Date().toISOString(),
-        status: newOrder.status || "Pending",
-        paymentStatus: newOrder.paymentStatus || "Pending"
-      });
       
       // Simulate payment processing
       setTimeout(async () => {
@@ -161,38 +168,42 @@ const CheckoutPage = () => {
           );
 
           let updatedOrder;
+          
           if (updateResponse.ok) {
             updatedOrder = await updateResponse.json();
+            
+            // Update order in localStorage
+            const existingOrders = JSON.parse(localStorage.getItem('userOrders') || '[]');
+            const orderIndex = existingOrders.findIndex(order => order._id === newOrder._id);
+            
+            if (orderIndex !== -1) {
+              existingOrders[orderIndex] = updatedOrder;
+              localStorage.setItem('userOrders', JSON.stringify(existingOrders));
+            }
+            
           } else {
-            console.error("Failed to update order status in backend");
-            // Fallback: create updated order locally
+            console.error("Failed to update order status");
+            // Fallback: update local state only
             updatedOrder = {
               ...newOrder,
               paymentStatus: "Paid",
               status: "Shipped"
             };
+            
+            // Update order in localStorage with fallback data
+            const existingOrders = JSON.parse(localStorage.getItem('userOrders') || '[]');
+            const orderIndex = existingOrders.findIndex(order => order._id === newOrder._id);
+            
+            if (orderIndex !== -1) {
+              existingOrders[orderIndex] = updatedOrder;
+              localStorage.setItem('userOrders', JSON.stringify(existingOrders));
+            }
           }
           
           setOrderDetails(updatedOrder);
           setPaymentCompleted(true);
-          
-          // Update the order in localStorage with the final status
-          try {
-            const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
-            const updatedOrders = existingOrders.map(order => 
-              order._id === newOrder._id ? {
-                ...order,
-                paymentStatus: "Paid",
-                status: "Shipped",
-                updatedAt: new Date().toISOString()
-              } : order
-            );
-            localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
-          } catch (error) {
-            console.error("Error updating order in localStorage:", error);
-          }
-          
           clearCart();
+          
         } catch (err) {
           console.error("Error updating order status:", err);
           // Fallback: update local state only
@@ -201,25 +212,18 @@ const CheckoutPage = () => {
             paymentStatus: "Paid",
             status: "Shipped"
           };
-          setOrderDetails(updatedOrder);
-          setPaymentCompleted(true);
           
-          // Update localStorage with fallback data
-          try {
-            const existingOrders = JSON.parse(localStorage.getItem("userOrders") || "[]");
-            const updatedOrders = existingOrders.map(order => 
-              order._id === newOrder._id ? {
-                ...order,
-                paymentStatus: "Paid",
-                status: "Shipped",
-                updatedAt: new Date().toISOString()
-              } : order
-            );
-            localStorage.setItem("userOrders", JSON.stringify(updatedOrders));
-          } catch (error) {
-            console.error("Error updating order in localStorage:", error);
+          // Update order in localStorage with fallback data
+          const existingOrders = JSON.parse(localStorage.getItem('userOrders') || '[]');
+          const orderIndex = existingOrders.findIndex(order => order._id === newOrder._id);
+          
+          if (orderIndex !== -1) {
+            existingOrders[orderIndex] = updatedOrder;
+            localStorage.setItem('userOrders', JSON.stringify(existingOrders));
           }
           
+          setOrderDetails(updatedOrder);
+          setPaymentCompleted(true);
           clearCart();
         }
       }, 2000);
@@ -227,10 +231,18 @@ const CheckoutPage = () => {
     } catch (err) {
       setError(err.message || "Failed to place order. Please try again.");
       console.error("Order placement error:", err);
+      
+      // Check if it's a server error and provide more specific guidance
+      if (err.message.includes("500")) {
+        setError("Server error. Please try again later or contact support if the problem persists.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // The rest of your component remains the same...
+  // [Keep the existing JSX return statements]
 
   if (orderPlaced) {
     return (
