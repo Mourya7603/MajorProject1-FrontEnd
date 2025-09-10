@@ -1,70 +1,117 @@
-# Getting Started with Create React App
+# MyShopping Site
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack e-commerce platform where users can browse products, manage shopping carts, create wishlists, and complete purchases.  
+Built with a React frontend, Express/Node backend, MongoDB database.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Demo Link
 
-### `npm start`
+[Live Demo](https://major-project1-front-end.vercel.app/)  
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Quick Start
 
-### `npm test`
+```bash
+git clone https://github.com/Mourya7603/MajorProject1-FrontEnd.git
+cd shopping-site
+npm install
+npm run dev      # or `npm start` / `yarn dev`
+```
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Technologies
+- React JS
+- React Router
+- Node.js
+- Express
+- MongoDB
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Demo Video
+Watch a walkthrough (5–7 minutes) of all major features of this app:  
+[Video Link](https://drive.google.com/file/d/1LinqJW0J0t_cYVyJvSplpYRlUautfzX7/view?usp=sharing) 
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Features
+**Home**
+- Displays featured products and categories
+- Navigation to all sections of the site
 
-### `npm run eject`
+**Product Browsing**
+- Browse all products with filtering options
+- Search products in real-time
+- Paginated product listings
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+**Product Details**
+- View detailed product information (images, descriptions, specifications)
+- Add products to cart or wishlist
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+**Shopping Cart**
+- Add/remove products from cart
+- Adjust quantities
+- View order summary
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**Wishlist Management**
+- Save favorite products for later
+- Move items from wishlist to cart
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+**User Profile**
+- Manage personal information
+- View order history
 
-## Learn More
+**Address Management**
+- Save multiple shipping addresses
+- Set default address for checkout
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## API Reference
 
-### Code Splitting
+### **GET	/api/products**<br>	 
+List all products<br>	 
+Sample Response:<br>
+```[{ _id, name, price, category, image, ... }, …]```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### **GET	/api/products/:id**<br>	 	
+Get details for one product<br>		
+Sample Response:<br>
+```{ _id, name, price, description, images, ... }```
 
-### Analyzing the Bundle Size
+### **GET	/api/products/category/:category**<br>	 	
+Get products by category<br>		
+Sample Response:<br>
+```[{ _id, name, price, image, ... }, …]```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### **POST	/api/products**<br> 	
+Create a new product (admin protected)<br>	
+Sample Response:<br>
+```{ _id, name, price, category, ... }```
 
-### Making a Progressive Web App
+### **POST	/api/cart**<br> 	
+Add item to cart (protected)<br>	
+Sample Response:<br>
+```{ _id, userId, items, total, ... }```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### **GET	/api/cart**<br> 	
+Get user's cart (protected)<br>	
+Sample Response:<br>
+```{ _id, userId, items, total, ... }```
 
-### Advanced Configuration
+### **POST	/api/wishlist**<br> 	
+Add item to wishlist (protected)<br>	
+Sample Response:<br>
+```{ _id, userId, items, ... }```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### **POST	/api/orders**<br> 	
+Create a new order (protected)<br>	
+Sample Response:<br>
+```{ _id, userId, items, total, status, ... }```
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Contact
+For bugs or feature requests, please reach out to magalapallimourya@gmail.com
